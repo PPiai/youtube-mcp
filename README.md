@@ -19,13 +19,14 @@ Model Context Protocol (MCP) server for YouTube Data API v3. Provides tools for 
 ## Installation
 
 ```bash
-cd /opt/data/mcp-servers/youtube-mcp
+git clone https://github.com/PPiai/youtube-mcp.git
+cd youtube-mcp
 pip install -e .
 ```
 
 Or with uv:
 ```bash
-uv pip install -e /opt/data/mcp-servers/youtube-mcp
+uv pip install -e .
 ```
 
 ## Configuration
@@ -51,14 +52,60 @@ This server supports two transports, selected by `MCP_TRANSPORT`:
 
 ### Streamable HTTP (remote service — default)
 
-Runs as a persistent HTTP service. The MCP endpoint is served at `/mcp` and a
-health check is exposed at `/health`.
+Runs as a persistent HTTP service on a single port (default `8000`).
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/mcp/` | `POST` | MCP streamable-HTTP endpoint (JSON-RPC) |
+| `/health` | `GET` | Health check — returns `200 {"status":"ok"}` |
 
 ```bash
 MCP_TRANSPORT=streamable-http PORT=8000 youtube-mcp
-# MCP endpoint: http://localhost:8000/mcp
+# MCP endpoint: http://localhost:8000/mcp/
 # Health:       http://localhost:8000/health
 ```
+
+> **Note — trailing slash.** The MCP endpoint is mounted at `/mcp`, so `POST /mcp`
+> returns a **307 redirect to `/mcp/`**. Always point clients at `/mcp/` (with the
+> trailing slash) to avoid clients that don't follow redirects on `POST`.
+
+**Connecting an MCP client to the remote endpoint** (e.g. `mcp.json` /
+Claude Desktop style config):
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "type": "streamable-http",
+      "url": "https://<your-domain>/mcp/"
+    }
+  }
+}
+```
+
+**Quick test with curl:**
+
+```bash
+# Health
+curl https://<your-domain>/health
+
+# Initialize (note: streamable-HTTP replies with an SSE stream)
+curl -X POST https://<your-domain>/mcp/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
+
+# Call a tool
+curl -X POST https://<your-domain>/mcp/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_videos","arguments":{"query":"ai news","max_results":2}}}'
+```
+
+> **⚠️ Security.** The HTTP endpoint has **no built-in authentication** — anyone
+> who can reach the URL can issue requests and consume your YouTube API quota.
+> Put it behind an authenticating reverse proxy / network policy, or keep it on a
+> private network. Do not expose it publicly without protection.
 
 ### stdio (local)
 
@@ -120,9 +167,13 @@ build-arg), expose port `8000`, and point the MCP client to
 # Install dev dependencies
 pip install -e ".[dev]"
 
-# Run tests
-pytest
+# Run the server locally over HTTP and smoke-test it
+MCP_TRANSPORT=streamable-http youtube-mcp &
+curl http://localhost:8000/health
 ```
+
+> No automated test suite yet — `pytest` is wired up in the `dev` extra but there
+> are no tests under a `tests/` directory. Contributions welcome.
 
 ## License
 
