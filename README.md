@@ -32,14 +32,37 @@ uv pip install -e /opt/data/mcp-servers/youtube-mcp
 
 Requires a YouTube Data API v3 key. Get one from [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 
-Set the environment variable:
+Copy `.env.example` to `.env` and fill in your values:
+
 ```bash
-export YOUTUBE_API_KEY="your_api_key_here"
+cp .env.example .env
 ```
 
-## Usage with Hermes Agent
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `YOUTUBE_API_KEY` | — | **Required.** YouTube Data API v3 key |
+| `MCP_TRANSPORT` | `streamable-http` | `streamable-http` (remote service) or `stdio` (local) |
+| `HOST` | `0.0.0.0` | Bind host (HTTP mode) |
+| `PORT` | `8000` | Bind port (HTTP mode) |
 
-Add to your `~/.hermes/config.yaml`:
+## Transports
+
+This server supports two transports, selected by `MCP_TRANSPORT`:
+
+### Streamable HTTP (remote service — default)
+
+Runs as a persistent HTTP service. The MCP endpoint is served at `/mcp` and a
+health check is exposed at `/health`.
+
+```bash
+MCP_TRANSPORT=streamable-http PORT=8000 youtube-mcp
+# MCP endpoint: http://localhost:8000/mcp
+# Health:       http://localhost:8000/health
+```
+
+### stdio (local)
+
+Launched on-demand by a local client (e.g. via `uvx`):
 
 ```yaml
 mcp_servers:
@@ -48,11 +71,23 @@ mcp_servers:
     args: ["youtube-mcp"]
     env:
       YOUTUBE_API_KEY: "your_api_key_here"
+      MCP_TRANSPORT: "stdio"
     timeout: 120
     connect_timeout: 60
 ```
 
-Then restart Hermes Agent. The tools will be available as `mcp_youtube_*`.
+## Deploy (EasyPanel / Docker)
+
+Build and run as a container:
+
+```bash
+docker build -t youtube-mcp .
+docker run -p 8000:8000 -e YOUTUBE_API_KEY="your_api_key_here" youtube-mcp
+```
+
+On EasyPanel, set `YOUTUBE_API_KEY` as a **service environment variable** (not a
+build-arg), expose port `8000`, and point the MCP client to
+`https://<your-domain>/mcp`.
 
 ## Available Tools
 

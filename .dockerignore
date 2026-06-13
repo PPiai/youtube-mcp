@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.egg-info
+.env
+.env.*
+!.env.example
+.github
+README.md.bak
+.vscode
+.idea
+.DS_Store

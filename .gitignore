@@ -1,0 +1,28 @@
+# Segredos
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# uv
+uv.lock
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
